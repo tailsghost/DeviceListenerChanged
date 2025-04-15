@@ -1,0 +1,34 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>net6.0-windows;net7.0-windows;net8.0-windows;net9.0-windows;</TargetFrameworks>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)'=='Release'">
+		<Optimize>true</Optimize>
+		<DebugType>none</DebugType>
+		<DebugSymbols>false</DebugSymbols>
+		<TieredCompilation>true</TieredCompilation>
+		<DefineConstants>TRACE</DefineConstants>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="README.md" Pack="true" PackagePath="" />
+	</ItemGroup>
+
+
+	<PropertyGroup>
+		<PackageId>DeviceListenerChanged</PackageId>
+		<Version>1.0.1</Version>
+		<Authors>TailsGhost</Authors>
+		<Description>Библиотека для отслеживания подключения и отключения USB-устройств, COM-портов и HID-устройств по заданным VID и PID.</Description>
+		<PackageProjectUrl>https://github.com/tailsghost/DeviceListenerChanged</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/tailsghost/DeviceListenerChanged</RepositoryUrl>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+	</PropertyGroup>
+
+</Project>
