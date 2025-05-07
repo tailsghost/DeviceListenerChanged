@@ -145,7 +145,7 @@ namespace DeviceListenerChanged
                 {
                     var eventType = (int)wParam;
 
-                    if (eventType == DBT_DEVICEARRIVAL || eventType == DBT_DEVICEREMOVECOMPLETE)
+                    if (eventType is DBT_DEVICEARRIVAL or DBT_DEVICEREMOVECOMPLETE)
                     {
                         var hdr = Marshal.PtrToStructure<DEV_BROADCAST_HDR>(lParam);
                         if (hdr.dbch_devicetype == DBT_DEVTYP_DEVICEINTERFACE)
@@ -182,12 +182,11 @@ namespace DeviceListenerChanged
 
         public void Dispose()
         {
-            if (_hwnd != IntPtr.Zero)
-            {
-                PostMessage(_hwnd, 0x0012, IntPtr.Zero, IntPtr.Zero);
-                _messageThread.Join();
-                _hwnd = IntPtr.Zero;
-            }
+            if (_hwnd == IntPtr.Zero) return;
+
+            PostMessage(_hwnd, 0x0012, IntPtr.Zero, IntPtr.Zero);
+            _messageThread.Join();
+            _hwnd = IntPtr.Zero;
         }
 
         private delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);

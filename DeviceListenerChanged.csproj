@@ -4,10 +4,15 @@
 		<TargetFrameworks>net6.0-windows;net7.0-windows;net8.0-windows;net9.0-windows;</TargetFrameworks>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-	</PropertyGroup>
-
-	<PropertyGroup Condition="'$(Configuration)'=='Release'">
 		<Optimize>true</Optimize>
+		<Deterministic>true</Deterministic>
+		<ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<IsTrimmable>true</IsTrimmable>
+		<EnableDynamicLoading>false</EnableDynamicLoading>
+		<PublishTrimmed>true</PublishTrimmed>
+		<TrimMode>link</TrimMode>
+		<PublishReadyToRun>true</PublishReadyToRun>
 		<DebugType>none</DebugType>
 		<DebugSymbols>false</DebugSymbols>
 		<TieredCompilation>true</TieredCompilation>
@@ -21,7 +26,7 @@
 
 	<PropertyGroup>
 		<PackageId>DeviceListenerChanged</PackageId>
-		<Version>1.0.1</Version>
+		<Version>1.0.2</Version>
 		<Authors>TailsGhost</Authors>
 		<Description>Библиотека для отслеживания подключения и отключения USB-устройств, COM-портов и HID-устройств по заданным VID и PID.</Description>
 		<PackageProjectUrl>https://github.com/tailsghost/DeviceListenerChanged</PackageProjectUrl>
