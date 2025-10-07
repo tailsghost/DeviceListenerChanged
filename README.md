@@ -37,4 +37,4 @@ listener.DeviceMatchedDisconnected += () => Console.WriteLine("Устройст�
 - Компонент предназначен для работы только на Windows.
 
 ## Nuget
-- https://www.nuget.org/packages/DeviceListenerChanged/1.0.1
+- https://www.nuget.org/packages/DeviceListenerChanged/1.0.3

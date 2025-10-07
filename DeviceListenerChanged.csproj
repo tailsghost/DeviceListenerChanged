@@ -26,7 +26,7 @@
 
 	<PropertyGroup>
 		<PackageId>DeviceListenerChanged</PackageId>
-		<Version>1.0.2</Version>
+		<Version>1.0.3</Version>
 		<Authors>TailsGhost</Authors>
 		<Description>Библиотека для отслеживания подключения и отключения USB-устройств, COM-портов и HID-устройств по заданным VID и PID.</Description>
 		<PackageProjectUrl>https://github.com/tailsghost/DeviceListenerChanged</PackageProjectUrl>
