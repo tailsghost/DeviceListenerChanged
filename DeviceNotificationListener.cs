@@ -34,32 +34,11 @@ namespace DeviceListenerChanged
         internal bool _useComport = false;
         internal bool _useHid = false;
 
-        internal Action<string, LogType>? _callback;
-
-        public DevineInterface(bool usb, bool comport, bool hid, Action<string, LogType>? callback = null)
+        public DevineInterface(bool usb, bool comport, bool hid)
         {
             _useComport = comport;
             _useUsb = usb;
             _useHid = hid;
-            _callback = callback;
-        }
-
-
-        internal void LogOk(string value) => Log(value, LogType.Ok);
-        internal void LogWarn(string value) => Log(value, LogType.Warn);
-        internal void LogErr(string value) => Log(value, LogType.Err);
-
-        private void Log(string value, LogType type)
-        {
-            try
-            {
-                _callback?.Invoke(value, type);
-            }
-            catch
-            {
-                Console.WriteLine(value);
-                Debug.WriteLine(value);
-            }
         }
     }
 
@@ -106,6 +85,27 @@ namespace DeviceListenerChanged
         private const long INVALID_HANDLE_VALUE = -1;
 
 
+        public event Action<string, LogType> Callback;
+
+
+        internal void LogOk(string value) => Log(value, LogType.Ok);
+        internal void LogWarn(string value) => Log(value, LogType.Warn);
+        internal void LogErr(string value) => Log(value, LogType.Err);
+
+        private void Log(string value, LogType type)
+        {
+            try
+            {
+                Callback?.Invoke(value, type);
+            }
+            catch
+            {
+                Console.WriteLine(value);
+                Debug.WriteLine(value);
+            }
+        }
+
+
         public DeviceNotificationListener(TargetVidPid target, DevineInterface iInterface)
         {
             _targetVidPid = target ?? throw new ArgumentNullException(nameof(target));
@@ -115,11 +115,11 @@ namespace DeviceListenerChanged
             try
             {
                 _devicePreviouslyPresent = IsDevicePresentByVidPid(_targetVidPid);
-                _devineInterface.LogOk($"Device initially present: {_devicePreviouslyPresent}");
+                LogOk($"Device initially present: {_devicePreviouslyPresent}");
             }
             catch (Exception ex)
             {
-                _devineInterface.LogErr($"[INIT] Presence check failed: {ex.Message}");
+                LogErr($"[INIT] Presence check failed: {ex.Message}");
                 _devicePreviouslyPresent = false;
             }
 
@@ -171,7 +171,7 @@ namespace DeviceListenerChanged
                 var atom = RegisterClassEx(ref wc);
                 if (atom == 0)
                 {
-                    _devineInterface.LogErr($"RegisterClassEx failed: {Marshal.GetLastWin32Error()}");
+                    LogErr($"RegisterClassEx failed: {Marshal.GetLastWin32Error()}");
                     _windowReady.Set();
                     return;
                 }
@@ -190,7 +190,7 @@ namespace DeviceListenerChanged
                 if (_hwnd == IntPtr.Zero)
                 {
                     var err = Marshal.GetHRForLastWin32Error();
-                    _devineInterface.LogErr($"CreateWindowEx failed: {err} -> {GetErrorMessage(err)}");
+                    LogErr($"CreateWindowEx failed: {err} -> {GetErrorMessage(err)}");
                     _windowReady.Set();
                     UnregisterClass(wc.lpszClassName, hInstance);
                     return;
@@ -199,7 +199,7 @@ namespace DeviceListenerChanged
                 _messageThreadId = GetCurrentThreadId();
                 RegisterForDeviceNotifications(_hwnd);
 
-                _devineInterface.LogOk("Listener started. hwnd=" + _hwnd);
+                LogOk("Listener started. hwnd=" + _hwnd);
                 _windowReady.Set();
 
                 int res;
@@ -208,7 +208,7 @@ namespace DeviceListenerChanged
                 {
                     if (res == -1)
                     {
-                        _devineInterface.LogErr("GetMessage returned -1.");
+                        LogErr("GetMessage returned -1.");
                         return;
                     }
 
@@ -216,11 +216,11 @@ namespace DeviceListenerChanged
                     DispatchMessage(ref msg);
                 }
 
-                _devineInterface.LogOk("Message loop exited.");
+                LogOk("Message loop exited.");
             }
             catch (Exception ex)
             {
-                _devineInterface.LogErr("MessageLoopThread: " + ex.Message);
+                LogErr("MessageLoopThread: " + ex.Message);
             }
             finally
             {
@@ -247,7 +247,7 @@ namespace DeviceListenerChanged
                 }
                 catch (Exception ex)
                 {
-                    _devineInterface.LogErr("cleanup: " + ex.Message);
+                    LogErr("cleanup: " + ex.Message);
                 }
 
                 if (_wndProcHandle is { IsAllocated: true })
@@ -270,19 +270,19 @@ namespace DeviceListenerChanged
                     }
                     catch (Exception ex)
                     {
-                        _devineInterface.LogErr("Presence check failed: " + ex.Message);
+                        LogErr("Presence check failed: " + ex.Message);
                         present = _devicePreviouslyPresent;
                     }
 
                     if (present && !_devicePreviouslyPresent)
                     {
-                        _devineInterface.LogOk("Detected CONNECT via polling.");
+                        LogOk("Detected CONNECT via polling.");
                         _devicePreviouslyPresent = true;
                         DeviceMatchedConnected?.Invoke();
                     }
                     else if (!present && _devicePreviouslyPresent)
                     {
-                        _devineInterface.LogOk("Detected DISCONNECT via polling.");
+                        LogOk("Detected DISCONNECT via polling.");
                         _devicePreviouslyPresent = false;
                         DeviceMatchedDisconnected?.Invoke();
                     }
@@ -293,7 +293,7 @@ namespace DeviceListenerChanged
             }
             catch (Exception ex)
             {
-                _devineInterface.LogErr("Exception: " + ex.Message);
+                LogErr("Exception: " + ex.Message);
             }
         }
 
@@ -327,13 +327,12 @@ namespace DeviceListenerChanged
                 if (notif == IntPtr.Zero)
                 {
                     var err = Marshal.GetLastWin32Error();
-                    _devineInterface.LogErr(
-                        $"RegisterDeviceNotification for {guid} failed: {err} -> {GetErrorMessage(err)}");
+                    LogErr($"RegisterDeviceNotification for {guid} failed: {err} -> {GetErrorMessage(err)}");
                 }
                 else
                 {
                     _notifHandles.Add(notif);
-                    _devineInterface.LogOk($"Registered device notification for {guid} -> handle {notif}");
+                    LogOk($"Registered device notification for {guid} -> handle {notif}");
                 }
             }
             finally
@@ -350,71 +349,69 @@ namespace DeviceListenerChanged
                 if (msg == WM_DEVICECHANGE)
                 {
                     var eventType = (int)wParam;
-                    _devineInterface.LogOk(
-                        $"wParam=0x{eventType:X} lParam={(lParam == IntPtr.Zero ? "NULL" : lParam.ToString())}");
+                    LogOk($"wParam=0x{eventType:X} lParam={(lParam == IntPtr.Zero ? "NULL" : lParam.ToString())}");
 
-                    if (eventType is DBT_DEVICEARRIVAL or DBT_DEVICEREMOVECOMPLETE or DBT_DEVICEREMOVEPENDING)
+                    switch (eventType)
                     {
-                        if (lParam == IntPtr.Zero)
-                        {
-                            _devineInterface.LogWarn("Arrival/Remove event with null lParam.");
+                        case DBT_DEVICEARRIVAL or DBT_DEVICEREMOVECOMPLETE or DBT_DEVICEREMOVEPENDING when lParam == IntPtr.Zero:
+                            LogWarn("Arrival/Remove event with null lParam.");
                             RescanPresenceAndFireIfNeeded();
-                        }
-                        else
+                            break;
+                        case DBT_DEVICEARRIVAL or DBT_DEVICEREMOVECOMPLETE or DBT_DEVICEREMOVEPENDING:
                         {
                             var hdr = Marshal.PtrToStructure<DEV_BROADCAST_HDR>(lParam);
-                            _devineInterface.LogOk(
-                                $"hdr.size={hdr.dbch_size} hdr.type={hdr.dbch_devicetype} reserved={hdr.dbch_reserved}");
+                            LogOk($"hdr.size={hdr.dbch_size} hdr.type={hdr.dbch_devicetype} reserved={hdr.dbch_reserved}");
 
                             if (hdr.dbch_devicetype == DBT_DEVTYP_DEVICEINTERFACE)
                             {
                                 var devicePath = TryGetDevicePath(lParam, hdr.dbch_size);
-                                _devineInterface.LogOk($"Decoded devicePath: '{devicePath ?? "<null>"}'");
+                                LogOk($"Decoded devicePath: '{devicePath ?? "<null>"}'");
 
                                 if (!string.IsNullOrEmpty(devicePath) && MatchesTargetVidPid(devicePath))
                                 {
-                                    if (eventType == DBT_DEVICEARRIVAL)
+                                    switch (eventType)
                                     {
-                                        _devineInterface.LogOk("Matched CONNECT");
-                                        _devicePreviouslyPresent = true;
-                                        DeviceMatchedConnected?.Invoke();
-                                    }
-                                    else if (eventType is DBT_DEVICEREMOVECOMPLETE or DBT_DEVICEREMOVEPENDING)
-                                    {
-                                        _devineInterface.LogOk("Matched DISCONNECT");
-                                        _devicePreviouslyPresent = false;
-                                        DeviceMatchedDisconnected?.Invoke();
+                                        case DBT_DEVICEARRIVAL:
+                                            LogOk("Matched CONNECT");
+                                            _devicePreviouslyPresent = true;
+                                            DeviceMatchedConnected?.Invoke();
+                                            break;
+                                        case DBT_DEVICEREMOVECOMPLETE or DBT_DEVICEREMOVEPENDING:
+                                            LogOk("Matched DISCONNECT");
+                                            _devicePreviouslyPresent = false;
+                                            DeviceMatchedDisconnected?.Invoke();
+                                            break;
                                     }
                                 }
                                 else
                                 {
-                                    _devineInterface.LogOk("Device path empty or did not match target VID/PID.");
+                                    LogOk("Device path empty or did not match target VID/PID.");
                                     RescanPresenceAndFireIfNeeded();
                                 }
                             }
                             else
                             {
-                                _devineInterface.LogOk($"Unhandled dbch_devicetype={hdr.dbch_devicetype}");
+                                LogOk($"Unhandled dbch_devicetype={hdr.dbch_devicetype}");
                                 if (eventType == DBT_DEVNODES_CHANGED)
                                     RescanPresenceAndFireIfNeeded();
                             }
+
+                            break;
                         }
-                    }
-                    else if (eventType == DBT_DEVNODES_CHANGED)
-                    {
-                        _devineInterface.LogOk("DBT_DEVNODES_CHANGED received -> rescan");
-                        RescanPresenceAndFireIfNeeded();
-                    }
-                    else
-                    {
-                        _devineInterface.LogOk($"Other WM_DEVICECHANGE code: 0x{eventType:X}");
+                        case DBT_DEVNODES_CHANGED:
+                            LogOk("DBT_DEVNODES_CHANGED received -> rescan");
+                            RescanPresenceAndFireIfNeeded();
+                            break;
+                        default:
+                            LogOk($"Other WM_DEVICECHANGE code: 0x{eventType:X}");
+                            break;
                     }
                 }
 
             }
             catch (Exception ex)
             {
-                _devineInterface.LogErr("=WndProc: " + ex.Message);
+                LogErr("=WndProc: " + ex.Message);
             }
 
             return DefWindowProc(hWnd, msg, wParam, lParam);
@@ -425,24 +422,24 @@ namespace DeviceListenerChanged
             try
             {
                 var nowPresent = IsDevicePresentByVidPid(_targetVidPid);
-                _devineInterface.LogOk($"PreviouslyPresent={_devicePreviouslyPresent} nowPresent={nowPresent}");
+                LogOk($"PreviouslyPresent={_devicePreviouslyPresent} nowPresent={nowPresent}");
 
                 if (nowPresent && !_devicePreviouslyPresent)
                 {
-                    _devineInterface.LogOk("Detected device CONNECT via rescan.");
+                    LogOk("Detected device CONNECT via rescan.");
                     _devicePreviouslyPresent = true;
                     DeviceMatchedConnected?.Invoke();
                 }
                 else if (!nowPresent && _devicePreviouslyPresent)
                 {
-                    _devineInterface.LogOk("Detected device DISCONNECT via rescan.");
+                    LogOk("Detected device DISCONNECT via rescan.");
                     _devicePreviouslyPresent = false;
                     DeviceMatchedDisconnected?.Invoke();
                 }
             }
             catch (Exception ex)
             {
-                _devineInterface.LogErr("Exception: " + ex.Message);
+                LogErr("Exception: " + ex.Message);
             }
         }
 
@@ -526,7 +523,7 @@ namespace DeviceListenerChanged
             if (hDevInfo == IntPtr.Zero || hDevInfo.ToInt64() == INVALID_HANDLE_VALUE)
             {
                 var err = Marshal.GetLastWin32Error();
-                _devineInterface.LogErr($"SetupDiGetClassDevs failed: {err} -> {GetErrorMessage(err)}");
+                LogErr($"SetupDiGetClassDevs failed: {err} -> {GetErrorMessage(err)}");
                 return false;
             }
 
@@ -622,13 +619,13 @@ namespace DeviceListenerChanged
                     PostThreadMessage(_messageThreadId, WM_QUIT, IntPtr.Zero, IntPtr.Zero);
                     if (_messageThread != null && !_messageThread.Join(3000))
                     {
-                        _devineInterface.LogWarn("Message thread did not exit in time.");
+                        LogWarn("Message thread did not exit in time.");
                     }
                 }
             }
             catch (Exception ex)
             {
-                _devineInterface.LogErr("Dispose: " + ex.Message);
+                LogErr("Dispose: " + ex.Message);
             }
         }
 
